@@ -12,10 +12,7 @@ defmodule Reed.MixProject do
       deps: deps(),
       docs: docs(),
       package: package(),
-      preferred_cli_env: [
-        docs: :docs,
-        "hex.publish": :docs
-      ]
+      cli: cli()
     ]
   end
 
@@ -28,6 +25,10 @@ defmodule Reed.MixProject do
 
   defp deps do
     [
+      {:atomic_map, "~> 0.9"},
+      {:jason, "~> 1.4"},
+      {:microformats2, "~> 1.0"},
+      {:mime, "~> 2.0"},
       {:saxy, "~> 1.6"},
       {:req, "~> 0.5", optional: true},
       {:ex_doc, "~> 0.31.0", only: :docs}
@@ -40,6 +41,10 @@ defmodule Reed.MixProject do
       licenses: ["MIT"],
       links: %{"GitHub" => "https://github.com/acalejos/reed"}
     ]
+  end
+
+  defp cli do
+    [preferred_envs: [docs: :docs, "hex.publish": :docs]]
   end
 
   defp docs do
