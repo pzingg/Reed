@@ -68,7 +68,7 @@ defmodule Reed.Basic.Item do
 
     data =
       data
-      |> AtomicMap.convert(safe: false)
+      |> AtomicMap.convert(safe: true)
       |> Map.merge(%{links: links, attachments: attachments, data: other_data})
 
     struct(__MODULE__, data)

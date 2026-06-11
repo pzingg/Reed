@@ -67,7 +67,7 @@ defmodule Reed.Basic.Feed do
 
     data =
       data
-      |> AtomicMap.convert(safe: false)
+      |> AtomicMap.convert(safe: true)
       |> Map.merge(%{image: image, links: links, items: items, data: other_data})
 
     struct(__MODULE__, data)
