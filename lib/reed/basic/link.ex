@@ -17,11 +17,11 @@ defmodule Reed.Basic.Link do
     found_link =
       rels
       |> List.wrap()
-      |> Enum.reduce_while(nil, fn rel, acc ->
+      |> Enum.reduce_while(nil, fn rel, _acc ->
         cond do
           rel == "any" -> {:halt, List.first(links)}
           found = Enum.find(links, fn link -> link.rel == rel end) -> {:halt, found}
-          true -> {:cont, acc}
+          true -> {:cont, nil}
         end
       end)
 

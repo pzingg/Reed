@@ -15,7 +15,7 @@ defmodule Reed.HtmlTest do
                )
 
       assert "html+mf2" == rss.flavor
-      assert Enum.count(rss.private.items) == 2
+      assert length(rss.private.items) == 2
     end
   end
 

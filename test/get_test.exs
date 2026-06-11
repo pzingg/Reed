@@ -38,7 +38,7 @@ defmodule Reed.GetTest do
         |> Req.Response.get_private(:rss)
         |> Reed.Basic.Transformer.to_feed()
 
-      assert Enum.count(feed.items) == 2
+      assert length(feed.items) == 2
     end
   end
 
@@ -93,7 +93,7 @@ defmodule Reed.GetTest do
         |> Req.Response.get_private(:rss)
         |> Reed.Basic.Transformer.to_feed()
 
-      assert Enum.count(feed.items) == 2
+      assert length(feed.items) == 2
     end
   end
 end

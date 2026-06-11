@@ -278,11 +278,8 @@ defmodule Reed.Handler do
 
   defp next_idx(item, local_path) do
     case get_in(item, local_path) do
-      %{0 => _} = value ->
-        value |> Map.keys() |> Enum.count()
-
-      _ ->
-        0
+      %{0 => _} = value when is_map(value) -> map_size(value)
+      _ -> 0
     end
   end
 

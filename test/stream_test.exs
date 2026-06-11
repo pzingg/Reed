@@ -14,7 +14,7 @@ defmodule Reed.StreamTest do
       assert "rss" == rss.flavor
       feed = Transformer.to_feed(rss)
       assert feed.title == "Jim Nielsen’s Blog"
-      assert Enum.count(feed.items) == 2
+      assert length(feed.items) == 2
     end
 
     test "atom feed" do
@@ -24,7 +24,7 @@ defmodule Reed.StreamTest do
       assert "atom" == rss.flavor
       feed = Transformer.to_feed(rss)
       assert feed.title == "Daring Fireball"
-      assert Enum.count(feed.items) == 2
+      assert length(feed.items) == 2
       item = List.first(feed.items)
       assert Item.content_base_url(item) == "https://daringfireball.net/linked/"
 
@@ -39,7 +39,7 @@ defmodule Reed.StreamTest do
       assert "json" == rss.flavor
       feed = Transformer.to_feed(rss)
       assert feed.title == "Daring Fireball"
-      assert Enum.count(feed.items) == 2
+      assert length(feed.items) == 2
     end
 
     test "html microformats feed" do
@@ -56,7 +56,7 @@ defmodule Reed.StreamTest do
       assert "html+mf2" == rss.flavor
       feed = Transformer.to_feed(rss)
       assert feed.title == "Jim Nielsen’s Blog"
-      assert Enum.count(feed.items) == 2
+      assert length(feed.items) == 2
     end
 
     test "youtube channel feed" do
@@ -66,7 +66,7 @@ defmodule Reed.StreamTest do
       assert "atom+media+youtube" == rss.flavor
       feed = Transformer.to_feed(rss)
       assert feed.title == "Paul Foxton"
-      assert Enum.count(feed.items) == 2
+      assert length(feed.items) == 2
     end
 
     test "itunes podcast feed" do
@@ -76,7 +76,7 @@ defmodule Reed.StreamTest do
       assert "itunes+podcast+rss" == rss.flavor
       feed = Transformer.to_feed(rss)
       assert feed.title == "AppleInsider Podcast"
-      assert Enum.count(feed.items) == 2
+      assert length(feed.items) == 2
     end
 
     test "wordpress feed" do
@@ -86,7 +86,7 @@ defmodule Reed.StreamTest do
       assert "media+rss" == rss.flavor
       feed = Transformer.to_feed(rss)
       assert feed.title == "The Bipeds' Monitor"
-      assert Enum.count(feed.items) == 3
+      assert length(feed.items) == 3
       assert feed.image.url == "https://s0.wp.com/i/buttonw-com.png"
       assert feed.image.type == "image/png"
       assert feed.image.title == "The Bipeds' Monitor"
