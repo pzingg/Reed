@@ -1,15 +1,16 @@
 defmodule Reed.Basic.Link do
   @derive Jason.Encoder
-  defstruct href: nil, rel: nil, type: nil
+  defstruct [:rel, :type, :title, :href]
 
   @type t :: %__MODULE__{
-          href: String.t(),
           rel: nil | String.t(),
-          type: nil | String.t()
+          type: nil | String.t(),
+          title: nil | String.t(),
+          href: String.t()
         }
 
   def to_link(data) when is_map(data) do
-    data = AtomicMap.convert(data, safe: true)
+    data = data |> Map.take(["rel", "type", "title", "href"]) |> AtomicMap.convert(safe: true)
     struct(__MODULE__, data)
   end
 

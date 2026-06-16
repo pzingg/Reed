@@ -78,13 +78,15 @@ defmodule Reed.Basic.Transformer do
       handler =
         name
         |> String.replace_prefix("atom:", "")
+        |> String.replace_prefix("atom10:", "")
         |> :lists.keyfind(1, handlers)
 
       result =
         case handler do
           false ->
             if !String.starts_with?(name, "xmlns") do
-              IO.puts("no handler for item #{name}")
+              # File.write!("attributes.txt", "#{name}\n", [:append])
+              Logger.warning("no handler for item #{name}")
             end
 
             ignore(name, value)
@@ -153,6 +155,112 @@ defmodule Reed.Basic.Transformer do
     %{rss | feed_info: feed_info}
   end
 
+  # TODO
+  # acast:episodeId
+  # acast:episodeUrl
+  # acast:network
+  # acast:settings
+  # acast:showId
+  # acast:showUrl
+  # acast:signature
+  # author_name
+  # author_url
+  # blogChannel:blink
+  # blogChannel:blogRoll
+  # castfire:channelName
+  # castfire:playlistCustomField
+  # characters
+  # creativeCommons:license
+  # custom:subtitle
+  # dc:contributor
+  # dc:date
+  # dc:format
+  # dc:language
+  # dc:modified
+  # dc:publisher
+  # dc:rights
+  # dc:subject
+  # dcterms:created
+  # dcterms:modified
+  # default1:object-type
+  # feedburner:origLink
+  # feedpress:locale
+  # feedpress:newsletterId
+  # fireside:genDate
+  # fireside:hostname
+  # fireside:playerEmbedCode
+  # fireside:playerURL
+  # flatplan:parameters
+  # friends:post-format
+  # georss:where
+  # googleplay:author
+  # googleplay:block
+  # googleplay:description
+  # googleplay:email
+  # googleplay:explicit
+  # googleplay:image
+  # googleplay:owner
+  # housekeeping:assert
+  # housekeeping:pointless
+  # housekeeping:robots
+  # housekeeping:validation
+  # html
+  # imageCaption
+  # lab:kicker
+  # lj:journal
+  # lj:journaltype
+  # lj:reply-count
+  # lj:security
+  # location
+  # media:caption
+  # media:category
+  # media:copyright
+  # media:credit
+  # media:description
+  # media:keywords
+  # media:rating
+  # media:restriction
+  # media:text
+  # media:title
+  # meta
+  # omny:clipId
+  # omny:networkId
+  # omny:organizationId
+  # omny:playlistId
+  # omny:programId
+  # ppg:canonical
+  # ppg:enclosureLegacy
+  # ppg:enclosureSecure
+  # ppg:network
+  # ppg:seriesDetails
+  # ppg:systemRef
+  # provider_name
+  # provider_url
+  # psc:chapters
+  # rawvoice:subscribe
+  # slate:id
+  # snf:analytics
+  # snf:darkModeLogo
+  # snf:logo
+  # source:cloud
+  # source:inReplyTo
+  # spotify:countryOfOrigin
+  # ssp:image
+  # standfirst
+  # thr:total
+  # thumbnail
+  # thumbnail_height
+  # thumbnail_url
+  # thumbnail_width
+  # timeToRead
+  # truthout:authors
+  # truthout:fullTitle
+  # truthout:source
+  # webfeeds:icon
+  # webmaster
+  # xhtml:meta
+  # xml:base
+  # xml:lang
   defp element_handlers do
     [
       {"_reed_normalized_", :boolean, :ignore},
@@ -163,7 +271,7 @@ defmodule Reed.Basic.Transformer do
       {"banner_image", :string, :ignore},
       {"categories", :list, &handle_categories/2},
       {"category", :list, &handle_categories/2},
-      {"cloud", :string, :ignore},
+      {"cloud", :map, &handle_rss_cloud/2},
       {"comments", :string, :ignore},
       {"content", :map, &handle_content/2},
       {"content_html", :string, &handle_content/2},
@@ -267,7 +375,7 @@ defmodule Reed.Basic.Transformer do
       {"source:localTime", :string, :ignore},
       {"source:markdown", :string, :ignore},
       {"source:outline", :map, :ignore},
-      {"source:self", :string, :ignore},
+      {"source:self", :string, &handle_self_url/2},
       {"subtitle", :string, &handle_subtitle/2},
       {"summary", :string, &handle_summary/2},
       {"sy:updateFrequency", :integer, :ignore},
@@ -357,14 +465,10 @@ defmodule Reed.Basic.Transformer do
       |> List.wrap()
       |> Enum.reduce([], fn
         %{"text" => text} = val, acc ->
-          case Map.get(val, "itunes:category") do
-            subvalue when is_map(subvalue) ->
-              {_op, %{"categories" => subcats}} = handle_categories("itunes:category", subvalue)
-              [Enum.join([text | subcats], " > ") | acc]
+          add_categories(acc, val, text)
 
-            _ ->
-              [text | acc]
-          end
+        %{"_text_" => text} = val, acc ->
+          add_categories(acc, val, text)
 
         val, acc when is_binary(val) ->
           [val | acc]
@@ -378,6 +482,17 @@ defmodule Reed.Basic.Transformer do
       |> Enum.reverse()
 
     {:merge, %{"categories" => value}}
+  end
+
+  defp add_categories(acc, val, text) when is_map(val) and is_binary(text) do
+    case Map.get(val, "itunes:category") do
+      subvalue when is_map(subvalue) ->
+        {_op, %{"categories" => subcats}} = handle_categories("itunes:category", subvalue)
+        [Enum.join([text | subcats], " > ") | acc]
+
+      _ ->
+        [text | acc]
+    end
   end
 
   # TODO
@@ -427,8 +542,11 @@ defmodule Reed.Basic.Transformer do
     end
   end
 
-  defp handle_self_url(_name, value) when is_binary(value) do
-    {:append, "links", %{"rel" => "self", "type" => "application/json", "href" => value}}
+  defp handle_self_url(name, value) when is_binary(value) do
+    # json %{"feed_url" => url}
+    # rss %{"source:self" => _url}
+    type = if name == "feed_url", do: "application/json", else: "application/rss+xml"
+    {:append, "links", %{"rel" => "self", "type" => type, "href" => value}}
   end
 
   defp handle_alternate_url(_name, value) when is_binary(value) do
@@ -441,7 +559,7 @@ defmodule Reed.Basic.Transformer do
 
   defp handle_id(_name, value) when is_binary(value) do
     # atom %{"id" => "https://blahblah"}
-    # rss #{"guid" => %{"isPermaLink" => _, "_text_" => _}}
+    # rss %{"guid" => %{"isPermaLink" => _, "_text_" => _}}
     {:merge, %{"id" => value}}
   end
 
@@ -465,6 +583,7 @@ defmodule Reed.Basic.Transformer do
 
   # Can have multiple elements in RSS
   defp handle_links(_name, value) do
+    # atom %{"link" => %{"rel" => "hub", "href" => _}}
     # atom/rss %{"link" => %{"rel" => "alternate", "type" => "application/rss+xml", "title" => "The Bipeds&#039; Monitor &raquo; Feed", "href" => "https://bipedsmonitor.com/feed/"}}
     # rss %{"atom:link" => %{"rel" => "self", "type" => "application/rss+xml", "href" => "https://bipedsmonitor.com/comments/feed/"}}
     links =
@@ -472,11 +591,19 @@ defmodule Reed.Basic.Transformer do
       |> List.wrap()
       |> Enum.map(fn
         value when is_binary(value) -> %{"rel" => "alternate", "type" => "html", "href" => value}
-        value when is_map(value) -> value
+        %{"rel" => "hub", "href" => _} = value -> Map.put_new(value, "type", "websub")
+        %{"href" => _} = value -> value
       end)
 
     # Logger.error("handle_links #{name}: #{inspect(links)}")
     {:append, "links", links}
+  end
+
+  defp handle_rss_cloud(_name, %{"domain" => host, "port" => port, "path" => path}) do
+    # rss %{"cloud" => %{"domain" => _, "port" => _, "path" => _, "registerProcedure" => "", "protocol" => "http-post"}}
+    port = String.to_integer(port)
+    url = %URI{scheme: "http", host: host, port: port, path: path} |> URI.to_string()
+    {:append, "links", %{"rel" => "hub", "type" => "rsscloud", "href" => url}}
   end
 
   defp handle_media_content(_name, value) do
