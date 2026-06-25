@@ -30,6 +30,8 @@ defmodule Reed.Basic.Feed do
           data: map()
         }
 
+  def new(attrs), do: struct(__MODULE__, attrs)
+
   def to_feed(data) when is_map(data) do
     {data, other_data} =
       data
