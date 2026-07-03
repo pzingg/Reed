@@ -103,7 +103,173 @@ structs. For feed items to be normalized this way, you must specify `Reed.Transf
 transformation pipeline, and you should not transform item data other than limiting or filtering items with,
 for example, `Reed.Transformers.limit/2` or `Reed.Transformers.filter/2`.
 
-## Examples
+### Reed.Basic transformer coverage
+
+The table below shows the basic attributes that are collected by the `Reed.Basic.Transformer` module
+and standardized in the `Reed.Basic.Feed`, `Item`, `Link` and `Attachment` structs. See the specifications 
+for the Atom, RSS 2.0, and Microformats mentioned above for more information.
+
+In addition, attributes from other commonly used namespaces that are parsed by the `Transformer` module include:
+
+["dc:creator" from the Dublin Core namespace](https://www.dublincore.org/specifications/dublin-core/dcmi-terms/)
+["source:self" from the RSS 2.0 "source" namespace](https://source.scripting.com/)
+["podcast:guid" from the Podcasting 2.0 namespace](https://podcasting2.org/docs/podcast-namespace/1.0)
+[Several "media:" attributes from the Media RSS namespace](https://www.rssboard.org/media-rss)
+[Several "itunes:" attributes from the Apple Podcasts specification](https://help.apple.com/itc/podcasts_connect/#/itcb54353390)
+
+Attributes that are not explicitly parsed into the `Reed.Basic` structs are available for clients
+in the `data` element of each struct.
+
+`Reed.Basic.Feed` attributes:
+
+| RSS            | Atom           | JSON          | Microformats | Feed field |
+| -------------- | -------------- | ------------- | -------- | ---------- |
+|                | author+        | authors       |          | author     |
+|                | contributor+   |               |          | author     |
+|                | id*            |               |          | id         |
+| image          |                |               |          | image      |
+| link           | link/other     |               | rel-urls | links      |
+| language       |                | language      |          | language   |
+|                | subtitle       |               |          | subtitle   |
+| description*   |                | description   |          | summary    |
+| title*         | title*         | title*        | name     | title      |
+| pubDate        | updated*       |               |          | updated    |
+|                | link/self      | feed_url      |          | links      |
+|                | link/alternate |               |          | links      |
+| items*         | entries*       |               |          | items      |
+| category       | category+      |               |          |            |
+| generator      | generator      |               |          |            |
+| copyright      | rights         |               |          |            |
+| cloud          |                |               |          |            |
+| docs           |                |               |          |            |
+| lastBuildDate  |                |               |          |            |
+| managingEditor |                |               |          |            |
+| rating         |                |               |          |            |
+| skipDays       |                |               |          |            |
+| skipHours      |                |               |          |            |
+| textInput      |                |               |          |            |
+| ttl            |                |               |          |            |
+| webMaster      |                |               |          |            |
+|                | icon           | icon          |          |            |
+|                | logo           |               |          |            |
+|                |                | expired       |          |            |
+|                |                | favicon       |          |            |
+|                |                | home_page_url |          |            |
+|                |                | hubs          |          |            |
+|                |                | next_url      |          |            |
+|                |                | user_comment  |          |            |
+|                |                | version*      |          |            |
+
+`Feed.Basic.Item` attributes:
+
+| RSS         | Atom           | JSON           | Microformats  | Item field  |
+| ----------- | -------------- | -------------- | ------------- | ----------- |
+| author      | author+        | authors        |               | author      |
+| category    | category+      | tags           |               | categories  |
+|             |                |                |               | duration    |
+| enclosure   | link/enclosure | attachments    |               | attachments |
+|             |                | image          |               | image       |
+| guid        | id*            | id*            | id            | id          |
+| link        | link/alternate |                |               | links       |
+| pubDate     | published      | date_published | published     | published   |
+| description | summary*       |                |               | summary     |
+| title       | title*         | title          |               | title       |
+|             | updated*       |                |               | updated     |
+|             | link/self      | url            | url           | links       |
+| comments    |                |                |               |             |
+| source      | source         |                |               |             |
+|             | content        |                | content.value | content     |
+|             |                | content_html   | content.html  | content     |
+|             |                | content_text   |               | content     |
+|             | contributor+   |                |               |             |
+|             | link/related   | external_url   |               | links       |
+|             | rights         |                |               |             |
+|             |                | banner_image   |               |             |
+|             |                | date_modified  |               |             |
+
+`Reed.Basic.Attachment` attributes:
+
+| RSS and Atom     | RSS Media | JSON Attachment     | Attachment field |
+| ---------------- | ----------| ------------------- | ------- |
+| enclosure.length | length    | size_in_bytes       | size    |
+| enclosure.type   | type      | mime_type           | type    |
+| enclosure.url    | url       | url                 | url     |
+| image.url        | url       |                     | url     |
+| image.link       |           |                     | link    |
+| image.title      |           |                     | title   |
+| image.height     | height    |                     | height  |
+| image.width      | width     |                     | width   |
+| itunes:duration  |           | duration_in_seconds |         |
+
+The transformer parses the RSS Media attributes for `media:content`
+and `media:thumbnail` elements.
+
+The Attachment `primary` field is set to true for the `media:content`
+inside a `media:group` element, to distinguish it from the other
+`media:thumbnail` elements in the group. 
+
+`Reed.Basic.Link` attributes:
+
+| RSS  | Atom      | JSON          | Microformats  | Link field |
+| ---- | ----------| ------------- | ------------- | ------ |
+|      | link.rel  |               | rel-url.rel   | rel    |
+|      | link.type |               | rel-url.type  | type   |
+| link | link.href | url           | rel-url       | href   |
+|      |           | external_url  |               | href   |
+|      |           | feed_url      |               | href   |
+|      |           | home_page_url |               | href   |
+|      |           |               | rel-url.title | title  |
+
+### Atom links
+
+The Atom specification defines five initial values for the Registry of Link
+Relations:
+
+  1.  The value "alternate" signifies that the IRI in the value of the
+      href attribute identifies an alternate version of the resource
+      described by the containing element.
+  2.  The value "related" signifies that the IRI in the value of the
+      href attribute identifies a resource related to the resource
+      described by the containing element.  For example, the feed for a
+      site that discusses the performance of the search engine at
+      "http://search.example.com" might contain, as a child of
+      atom:feed:
+      `<link rel="related" href="http://search.example.com/"/>`
+      An identical link might appear as a child of any atom:entry whose
+      content contains a discussion of that same search engine.
+  3.  The value "self" signifies that the IRI in the value of the href
+      attribute identifies a resource equivalent to the containing
+      element.
+  4.  The value "enclosure" signifies that the IRI in the value of the
+      href attribute identifies a related resource that is potentially
+      large in size and might require special handling.  For atom:link
+      elements with rel="enclosure", the length attribute SHOULD be
+      provided.
+  5.  The value "via" signifies that the IRI in the value of the href
+      attribute identifies a resource that is the source of the
+      information provided in the containing element.
+
+Some other rel values encountered:
+
+  * "amphtml"
+  * "apple-touch-icon-precomposed"
+  * "canonical"
+  * "dns-prefetch"
+  * "EditURI"
+  * "hub"
+  * "icon"
+  * "mask-icon"
+  * "me"
+  * "pingback"
+  * "preconnect"
+  * "prefetch"
+  * "preload"
+  * "profile"
+  * "search"
+  * "shortcut icon"
+  * "shortlink"
+  * "shorturl"
+  * "stylesheet"
 
 ### Get just the feed metadata
 
