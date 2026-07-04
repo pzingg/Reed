@@ -458,16 +458,21 @@ defmodule Reed.Basic.Transformer do
 
   # Can have multiple elements in RSS, and itunes:category can be nested
   defp handle_categories(name, value) do
+    # rss %{"category" -> %{"domain" => _, "_text_" => "Arts"}}
+    # atom %{"category" -> %{"scheme" => "https://www.theverge.com", "term" => "News"}}
     # %{"tags" => ["prototyping"]}
     # %{"itunes:category" => %{"text" => "Technology", %{"itunes:category" => %{"text" => "Tech News"}, "text" => "News"}}
-    value =
+    categories =
       value
       |> List.wrap()
       |> Enum.reduce([], fn
-        %{"text" => text} = val, acc ->
+        %{"_text_" => text} = val, acc when is_binary(text) ->
           add_categories(acc, val, text)
 
-        %{"_text_" => text} = val, acc ->
+        %{"text" => text} = val, acc when is_binary(text) ->
+          add_categories(acc, val, text)
+
+        %{"term" => text} = val, acc when is_binary(text) ->
           add_categories(acc, val, text)
 
         val, acc when is_binary(val) ->
@@ -476,12 +481,17 @@ defmodule Reed.Basic.Transformer do
         val, acc when is_list(val) ->
           val ++ acc
 
-        val, _acc ->
-          raise "categories (#{name}) missing 'text' in #{inspect(val)}"
+        val, acc ->
+          Logger.warning("categories (#{name}) missing text in #{inspect(val)}")
+          acc
       end)
       |> Enum.reverse()
 
-    {:merge, %{"categories" => value}}
+    if categories == [] do
+      :delete
+    else
+      {:merge, %{"categories" => categories}}
+    end
   end
 
   defp add_categories(acc, val, text) when is_map(val) and is_binary(text) do
@@ -600,7 +610,6 @@ defmodule Reed.Basic.Transformer do
         %{"href" => _} = value -> value
       end)
 
-    # Logger.error("handle_links #{name}: #{inspect(links)}")
     {:append, "links", links}
   end
 

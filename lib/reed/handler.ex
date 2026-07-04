@@ -14,7 +14,11 @@ defmodule Reed.Handler do
   def handle_event(:start_document, _prolog, state), do: {:ok, state}
 
   @impl Saxy.Handler
-  def handle_event(:end_document, _data, state), do: {:ok, state}
+  def handle_event(:end_document, _data, state) do
+    # We can get here and still have the feed_info inflated,
+    # if there were no items in the feed (e.g. https://developer.wordpress.org/feed/)
+    {:ok, maybe_deflate_feed(state)}
+  end
 
   @impl Saxy.Handler
   def handle_event(:start_element, {name, attributes}, state) do
@@ -23,21 +27,8 @@ defmodule Reed.Handler do
     new_state =
       cond do
         name in @item_names ->
-          if state.feed_deflated do
-            %{
-              state
-              | current_item: %{},
-                current_path: current_path
-            }
-          else
-            %{
-              state
-              | current_item: %{},
-                current_path: current_path,
-                feed_info: deflate(state.feed_info),
-                feed_deflated: true
-            }
-          end
+          state = maybe_deflate_feed(state)
+          %{state | current_item: %{}, current_path: current_path}
 
         not is_nil(state.current_item) ->
           idx = next_item_idx(state.current_item, current_path)
@@ -180,6 +171,12 @@ defmodule Reed.Handler do
         current_text: "",
         current_path: parent_path
     }
+  end
+
+  def maybe_deflate_feed(%{feed_deflated: true} = state), do: state
+
+  def maybe_deflate_feed(state) do
+    %{state | feed_info: deflate(state.feed_info), feed_deflated: true}
   end
 
   # Change singleton `%{0 => value}` to `value`, and multiple to a list of
