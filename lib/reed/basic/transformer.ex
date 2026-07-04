@@ -282,7 +282,7 @@ defmodule Reed.Basic.Transformer do
       {"date_modified", :string, :ignore},
       {"date_published", :string, &handle_updated/2},
       {"dc:creator", :string, &handle_authors/2},
-      {"description", :string, &handle_content/2},
+      {"description", :string, &handle_summary/2},
       {"docs", :string, :ignore},
       {"duration", :integer, &handle_duration/2},
       {"duration_in_seconds", :integer, &handle_duration/2},
@@ -293,7 +293,7 @@ defmodule Reed.Basic.Transformer do
       {"favicon", :string, :ignore},
       {"feed_url", :string, &handle_self_url/2},
       {"generator", :string, :ignore},
-      {"guid", :string, &handle_id/2},
+      {"guid", :map, &handle_id/2},
       {"height", :integer, :ignore},
       {"home_page_url", :string, &handle_alternate_url/2},
       {"href", :string, :ignore},
@@ -557,10 +557,15 @@ defmodule Reed.Basic.Transformer do
     {:append, "links", %{"rel" => "related", "type" => "text/html", "href" => value}}
   end
 
-  defp handle_id(_name, value) when is_binary(value) do
-    # atom %{"id" => "https://blahblah"}
+  defp handle_id(_name, %{"_text_" => id, "isPermaLink" => permalink}) do
     # rss %{"guid" => %{"isPermaLink" => _, "_text_" => _}}
-    {:merge, %{"id" => value}}
+    {:merge, %{"id" => id, "permalink" => permalink}}
+  end
+
+  defp handle_id(_name, value) when is_binary(value) do
+    # rss %{"guid" => _}}
+    # atom %{"id" => _}
+    {:merge, %{"id" => value, "permalink" => "undefined"}}
   end
 
   defp handle_image(_name, %{"url" => _} = value) do
