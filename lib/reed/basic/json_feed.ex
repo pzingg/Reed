@@ -31,7 +31,7 @@ defmodule Reed.Basic.JsonFeed do
   def parse_map(data, user_state) do
     # Set up :feed_info for transforms
     {items, feed} = Map.pop(data, "items", [])
-    user_state = %{user_state | feed_info: %{"feed" => feed}}
+    user_state = %{user_state | feed_private: %{"feed" => feed}}
 
     {final_state, _items} =
       Enum.reduce_while(items, {user_state, []}, fn item, {state, acc} ->

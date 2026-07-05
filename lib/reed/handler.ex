@@ -25,8 +25,8 @@ defmodule Reed.Handler do
     new_state =
       cond do
         name in @item_names ->
-          state = maybe_deflate_feed(state)
           %{state | current_item: %{}, current_path: current_path}
+          |> deflate_feed()
 
         not is_nil(state.current_item) ->
           idx = next_item_idx(state.current_item, current_path)
@@ -53,23 +53,23 @@ defmodule Reed.Handler do
             if name in @feed_names do
               current_path
             else
-              idx = next_feed_idx(state.feed_info, current_path)
+              idx = next_feed_idx(state.feed_private, current_path)
               [idx | current_path]
             end
 
           local_path = feed_path(current_path)
 
-          feed_info =
+          feed_private =
             if attributes != [] do
-              put_in(state.feed_info, access(local_path), Map.new(attributes))
+              put_in(state.feed_private, access(local_path), Map.new(attributes))
             else
-              state.feed_info
+              state.feed_private
             end
 
           %{
             state
             | current_path: current_path,
-              feed_info: feed_info,
+              feed_private: feed_private,
               flavor: flavor
           }
       end
@@ -97,14 +97,15 @@ defmodule Reed.Handler do
 
         true ->
           local_path = feed_path(state.current_path)
-          value = value_at(state.feed_info, local_path, state.current_text)
+          value = value_at(state.feed_private, local_path, state.current_text)
 
           %{
             state
-            | feed_info: put_in(state.feed_info, access(local_path), value),
+            | feed_private: put_in(state.feed_private, access(local_path), value),
               current_text: "",
               current_path: get_parent_path(state.current_path)
           }
+          |> deflate_feed()
       end
 
     if state.halted, do: {:stop, new_state}, else: {:ok, new_state}
@@ -174,7 +175,7 @@ defmodule Reed.Handler do
   @doc """
   Peforms final steps on collected data.
 
-  1. Deflates the `feed_info` if it hasn't been deflated already.
+  1. Deflates the `feed_private` if it hasn't been deflated already.
   2. Reverses the order of collected items so that they appear in the same
     order as in the original source.
   3. If `normalize_rss` option is true, normalizes both `feed_info` and
@@ -188,19 +189,17 @@ defmodule Reed.Handler do
 
   # Private functions
 
-  # Deflates the `feed_info` if it hasn't been deflated already, and
+  # Deflates the `feed_private` if it hasn't been deflated already, and
   # Reverses the order of collected items so that they appear in the same order
   # as in the original source.
   defp deflate_and_reorder(user_state) do
-    state = maybe_deflate_feed(user_state) |> client_state()
+    state = deflate_feed(user_state) |> client_state()
     items = get_in(state, [:private, :items]) || []
     put_in(state, [:private, :items], Enum.reverse(items))
   end
 
-  defp maybe_deflate_feed(%{feed_deflated: true} = state), do: state
-
-  defp maybe_deflate_feed(state) do
-    %{state | feed_info: deflate(state.feed_info), feed_deflated: true}
+  defp deflate_feed(state) do
+    %{state | feed_info: deflate(state.feed_private)}
   end
 
   # Change singleton `%{0 => value}` to `value`, and multiple to a list of
@@ -278,23 +277,59 @@ defmodule Reed.Handler do
     end
   end
 
-  def item_path(path) do
-    path
-    |> Enum.split_while(&(&1 not in @item_names))
-    |> elem(0)
-    |> Enum.reverse()
-  end
-
+  # The path functions below create 0-indexed paths. Since multiple child elements with
+  # the same name may be contained in a feed or item element, each child element
+  # and attribute in the "inflated" result is parsed as a map with 0-indexed key
+  # and the value of the element or attribute, like this:
+  #
+  # %{"link" => %{
+  #  0 => %{
+  #    "href" => "https://www.mux.com/?utm_campaign=fireball&utm_source=DF",
+  #    "rel" => "alternate",
+  #    "type" => "text/html"
+  #  },
+  #  1 => %{
+  #    "href" => "http://df4.us/x95",
+  #    "rel" => "shorturl",
+  #    "type" => "text/html"
+  #  }
+  # }}
+  #
+  # The state maintains the current path as a list of keys (always with a 0-indexed key at
+  # the head of the list) all the way down to the root element name, like this:
+  # `[0, "link", "item", "channel", "rss"]`.
+  #
+  # The `current_path` is then truncated and reversed to get the feed- or item-local path
+  # that the current value will be located at within the "inflated" `feed_private` or
+  # `current_item` map, e.g. `["link", 0]`.
+  #
+  # Nested elements keep the 0-indexed scheme before being deflated. Exmaple: current path
+  # `[0, "media:title", 0, "media:content", "item", "channel", "rss"]`, and its local path
+  # `["media:content", 0, "media:title", 0]`, where `media:title` is a child element of
+  # `media:content`.
+  #
+  # These "inflated" map values are deflated recursively to singleton or list values
+  # before being presented to the client for transformation. So the "link" value shown
+  # above deflates to a list as seen by the client:
+  #
+  # %{"link" => [
+  #  %{
+  #    "href" => "https://www.mux.com/?utm_campaign=fireball&utm_source=DF",
+  #    "rel" => "alternate",
+  #    "type" => "text/html"
+  #  },
+  #  %{
+  #    "href" => "http://df4.us/x95",
+  #    "rel" => "shorturl",
+  #    "type" => "text/html"
+  #  }
+  # ]}
   defp next_item_idx(current_item, path) do
     next_idx(current_item, item_path(path))
   end
 
-  defp feed_path(path) do
-    path |> Enum.reverse()
-  end
-
-  defp next_feed_idx(feed_info, path) do
-    next_idx(feed_info, feed_path(path))
+  defp next_feed_idx(feed_private, path) do
+    next_idx(feed_private, feed_path(path))
   end
 
   defp next_idx(item, local_path) do
@@ -302,6 +337,17 @@ defmodule Reed.Handler do
       %{0 => _} = value when is_map(value) -> map_size(value)
       _ -> 0
     end
+  end
+
+  def item_path(path) do
+    path
+    |> Enum.split_while(&(&1 not in @item_names))
+    |> elem(0)
+    |> Enum.reverse()
+  end
+
+  defp feed_path(path) do
+    path |> Enum.reverse()
   end
 
   defp get_parent_path(path) do

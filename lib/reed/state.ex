@@ -17,18 +17,25 @@ defmodule Reed.State do
 
   ### Private Fields
 
-  These fields are considered private and are used internally by `Reed` during the parsing process. These are NOT passed to
-  the pipeline transformation functions.
+  These fields are considered private and are used internally by `Reed` during the parsing
+  process. These are NOT passed to the pipeline transformation functions.
 
+  * `:feed_private` - We keep an "inflated" version of the feed elements, to handle the
+    outlying case where an XML document might have a `channel` metadata element located
+    after an `item` element. The RSS 2.0 specification says that "The `channel` also may
+    contain zero or more `item` elements, which SHOULD appear after all of the other
+    `channel` elements defined in this specification". The Atom 1.0 specification is more
+    explicit that the : "[The] element children [of the `atom:feed` element] consist of
+    metadata elements FOLLOWED BY zero or more `atom:entry` child elements."
   * `:current_text`
   * `:current_path`
   * `:transform`
   * `:normalize_rss`
-  * `:feed_deflated`
   * `:chunks`
   """
 
-  defstruct feed_info: %{},
+  defstruct feed_private: %{},
+            feed_info: %{},
             current_item: nil,
             halted: false,
             private: %{},
@@ -36,11 +43,11 @@ defmodule Reed.State do
             current_path: [],
             transform: nil,
             normalize_rss: false,
-            feed_deflated: false,
             chunks: nil,
             flavor: nil
 
   @type t :: %__MODULE__{
+          feed_private: map(),
           feed_info: map(),
           current_item: nil | map(),
           halted: boolean(),
@@ -49,7 +56,6 @@ defmodule Reed.State do
           current_path: list(),
           transform: nil | list(),
           normalize_rss: boolean(),
-          feed_deflated: boolean(),
           chunks: nil | list(),
           flavor: nil | String.t()
         }

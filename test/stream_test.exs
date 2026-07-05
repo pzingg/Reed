@@ -17,6 +17,15 @@ defmodule Reed.StreamTest do
       assert length(feed.items) == 2
     end
 
+    test "rss 2.0 feed with metadata after items" do
+      stream = stream_feed("disordered-example.xml")
+      assert {:ok, rss} = Reed.stream(stream, transform: collect() |> limit(2) |> pipeline())
+      assert "rss" == rss.flavor
+      feed = Transformer.to_feed(rss)
+      assert feed.title == "Scripting News"
+      assert length(feed.items) == 2
+    end
+
     test "atom feed" do
       # feed_url = "https://daringfireball.net/feeds/main"
       stream = stream_feed("daringfireball-net-feeds-main.xml")
