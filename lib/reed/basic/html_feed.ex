@@ -1,4 +1,9 @@
 defmodule Reed.Basic.HtmlFeed do
+  @moduledoc false
+
+  @doc """
+  Decodes an HTML microformats2 feed and passes it to the transformers.
+  """
   def parse(html_body, url, user_state) when is_binary(html_body) do
     case Microformats2.parse(html_body, url) do
       :error ->
@@ -20,7 +25,7 @@ defmodule Reed.Basic.HtmlFeed do
     end
   end
 
-  def parse_h_feed(%{"properties" => props} = item) do
+  defp parse_h_feed(%{"properties" => props} = item) do
     items =
       item
       |> Map.get("children", [])
@@ -33,7 +38,7 @@ defmodule Reed.Basic.HtmlFeed do
     }
   end
 
-  def parse_entry(%{"type" => types, "properties" => props} = entry) do
+  defp parse_entry(%{"type" => types, "properties" => props} = entry) do
     if "h-entry" in types do
       content = get_prop(props, "content", "value")
       content_html = get_prop(props, "content", "html")
@@ -52,17 +57,14 @@ defmodule Reed.Basic.HtmlFeed do
     end
   end
 
-  def get_prop(props, key) do
-    Map.get(props, key) |> first_prop()
+  defp get_prop(props, key) do
+    Map.get(props, key) |> List.first()
   end
 
-  def get_prop(props, key, subkey) do
-    case Map.get(props, key) |> first_prop() do
+  defp get_prop(props, key, subkey) do
+    case Map.get(props, key) |> List.first() do
       prop when is_map(prop) -> Map.get(prop, subkey)
       _ -> nil
     end
   end
-
-  def first_prop([value | _]), do: value
-  def first_prop(_), do: nil
 end

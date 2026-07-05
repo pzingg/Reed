@@ -47,11 +47,11 @@ defmodule Reed.StreamHandler do
 
         case Saxy.parse_stream(stream, Reed.Handler, initial_state) do
           {:ok, final_state} ->
-            {:ok, Reed.Basic.Transformer.finalize_and_normalize(final_state)}
+            {:ok, Reed.Handler.finalize(final_state)}
 
           {:halt, final_state, _rest} ->
             Logger.debug("parse_stream halted #{inspect(final_state)}")
-            {:ok, Reed.Basic.Transformer.finalize_and_normalize(final_state)}
+            {:ok, Reed.Handler.finalize(final_state)}
 
           {:error, %Saxy.ParseError{} = e} ->
             message = Exception.message(e)

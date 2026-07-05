@@ -39,18 +39,6 @@ defmodule Reed.Basic.Transformer do
 
   @doc """
   Normalizes both `rss.feed_info` and `rss.private.items`
-  into a standardized format, with collected items reversed so that
-  they appear in the same order as in the original XML, JSON, or HTML
-  microformats source.
-  """
-  def finalize_and_normalize(%{normalize_rss: true} = user_state) do
-    user_state |> finalize() |> normalize_rss()
-  end
-
-  def finalize_and_normalize(user_state), do: finalize(user_state)
-
-  @doc """
-  Normalizes both `rss.feed_info` and `rss.private.items`
   into a standardized format.
   """
   def normalize_rss(%{feed_info: feed_info, private: %{items: items}} = rss) do
@@ -134,13 +122,6 @@ defmodule Reed.Basic.Transformer do
   def normalized?(_), do: false
 
   # Private functions
-
-  # Here we reverse the items collected in `[:private, :items]`
-  defp finalize(user_state) do
-    state = Reed.Handler.client_state(user_state)
-    items = get_in(state, [:private, :items]) || []
-    put_in(state, [:private, :items], Enum.reverse(items))
-  end
 
   defp normalize_feed_info(%{feed_info: %{"_reed_normalized_" => true}} = rss), do: rss
 

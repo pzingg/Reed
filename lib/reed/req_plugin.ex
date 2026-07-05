@@ -126,7 +126,7 @@ if Code.ensure_loaded?(Req) || Mix.env() == :docs do
                 end
               )
 
-            rss = Reed.Basic.Transformer.finalize_and_normalize(final_user_state)
+            rss = Reed.Handler.finalize(final_user_state)
             resp = Response.put_private(resp, :rss, rss)
             {:halt, {req, resp}}
 

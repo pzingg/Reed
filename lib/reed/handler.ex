@@ -15,9 +15,7 @@ defmodule Reed.Handler do
 
   @impl Saxy.Handler
   def handle_event(:end_document, _data, state) do
-    # We can get here and still have the feed_info inflated,
-    # if there were no items in the feed (e.g. https://developer.wordpress.org/feed/)
-    {:ok, maybe_deflate_feed(state)}
+    {:ok, state}
   end
 
   @impl Saxy.Handler
@@ -173,26 +171,52 @@ defmodule Reed.Handler do
     }
   end
 
-  def maybe_deflate_feed(%{feed_deflated: true} = state), do: state
+  @doc """
+  Peforms final steps on collected data.
 
-  def maybe_deflate_feed(state) do
+  1. Deflates the `feed_info` if it hasn't been deflated already.
+  2. Reverses the order of collected items so that they appear in the same
+    order as in the original source.
+  3. If `normalize_rss` option is true, normalizes both `feed_info` and
+    `private.items` into a standardized format.
+  """
+  def finalize(%{normalize_rss: true} = user_state) do
+    deflate_and_reorder(user_state) |> Reed.Basic.Transformer.normalize_rss()
+  end
+
+  def finalize(user_state), do: deflate_and_reorder(user_state)
+
+  # Private functions
+
+  # Deflates the `feed_info` if it hasn't been deflated already, and
+  # Reverses the order of collected items so that they appear in the same order
+  # as in the original source.
+  defp deflate_and_reorder(user_state) do
+    state = maybe_deflate_feed(user_state) |> client_state()
+    items = get_in(state, [:private, :items]) || []
+    put_in(state, [:private, :items], Enum.reverse(items))
+  end
+
+  defp maybe_deflate_feed(%{feed_deflated: true} = state), do: state
+
+  defp maybe_deflate_feed(state) do
     %{state | feed_info: deflate(state.feed_info), feed_deflated: true}
   end
 
   # Change singleton `%{0 => value}` to `value`, and multiple to a list of
   # values, recursively.
-  def deflate(%{0 => _} = value) do
+  defp deflate(%{0 => _} = value) do
     case Map.values(value) do
       [subvalue] -> deflate(subvalue)
       multiple -> Enum.map(multiple, &deflate/1)
     end
   end
 
-  def deflate(value) when is_map(value) do
+  defp deflate(value) when is_map(value) do
     Enum.map(value, fn {name, subv} -> {name, deflate(subv)} end) |> Map.new()
   end
 
-  def deflate(value), do: value
+  defp deflate(value), do: value
 
   @keys [
     {:name, "rss", "rss"},

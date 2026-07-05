@@ -1,4 +1,9 @@
 defmodule Reed.Basic.JsonFeed do
+  @moduledoc false
+
+  @doc """
+  Decodes a JSON feed and passes it to the transformers.
+  """
   def parse(data, %{flavor: flavor} = user_state) when is_binary(data) and is_binary(flavor) do
     case Jason.decode(data, keys: :strings) do
       {:ok, data} when is_map(data) ->
@@ -17,6 +22,12 @@ defmodule Reed.Basic.JsonFeed do
     end
   end
 
+  @doc """
+  Separates the "feed" and "items" elements from the map.
+
+  Creates the `feed_info` and `current_item` elements, and passes the items
+  individually to the transformers.
+  """
   def parse_map(data, user_state) do
     # Set up :feed_info for transforms
     {items, feed} = Map.pop(data, "items", [])
@@ -36,6 +47,6 @@ defmodule Reed.Basic.JsonFeed do
         end
       end)
 
-    {:ok, Reed.Basic.Transformer.finalize_and_normalize(final_state)}
+    {:ok, Reed.Handler.finalize(final_state)}
   end
 end
