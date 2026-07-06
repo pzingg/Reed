@@ -26,7 +26,6 @@ defmodule Reed.Handler do
       cond do
         name in @item_names ->
           %{state | current_item: %{}, current_path: current_path}
-          |> deflate_feed()
 
         not is_nil(state.current_item) ->
           idx = next_item_idx(state.current_item, current_path)
@@ -82,7 +81,9 @@ defmodule Reed.Handler do
     new_state =
       cond do
         not is_nil(state.current_item) and name in @item_names ->
-          process_transforms(state)
+          state
+          |> maybe_deflate_feed()
+          |> process_transforms()
 
         not is_nil(state.current_item) ->
           local_path = item_path(state.current_path)
@@ -99,13 +100,16 @@ defmodule Reed.Handler do
           local_path = feed_path(state.current_path)
           value = value_at(state.feed_private, local_path, state.current_text)
 
+          # Reset `feed_info` so that next time it is needed it will be re-created by
+          # deflating `feed_private` (before `process_transforms/1`, or after the
+          # entire parse is complete).
           %{
             state
             | feed_private: put_in(state.feed_private, access(local_path), value),
+              feed_info: %{},
               current_text: "",
               current_path: get_parent_path(state.current_path)
           }
-          |> deflate_feed()
       end
 
     if state.halted, do: {:stop, new_state}, else: {:ok, new_state}
@@ -193,14 +197,17 @@ defmodule Reed.Handler do
   # Reverses the order of collected items so that they appear in the same order
   # as in the original source.
   defp deflate_and_reorder(user_state) do
-    state = deflate_feed(user_state) |> client_state()
+    state = maybe_deflate_feed(user_state) |> client_state()
     items = get_in(state, [:private, :items]) || []
     put_in(state, [:private, :items], Enum.reverse(items))
   end
 
-  defp deflate_feed(state) do
+  defp maybe_deflate_feed(%{feed_private: private, feed_info: info} = state)
+       when map_size(info) == 0 and map_size(private) != 0 do
     %{state | feed_info: deflate(state.feed_private)}
   end
+
+  defp maybe_deflate_feed(state), do: state
 
   # Change singleton `%{0 => value}` to `value`, and multiple to a list of
   # values, recursively.
