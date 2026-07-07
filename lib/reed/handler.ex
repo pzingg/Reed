@@ -143,6 +143,8 @@ defmodule Reed.Handler do
 
     case test do
       "<?xml" <> _rest -> :xml
+      "<rss" <> _rest -> :xml
+      "<feed" <> _rest -> :xml
       "{" <> _rest -> :json
       _ -> :html
     end
