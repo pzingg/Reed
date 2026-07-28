@@ -271,7 +271,7 @@ defmodule Reed.Basic.Transformer do
       {"enclosure", :list, &handle_attachments/2},
       {"expired", :string, :ignore},
       {"external_url", :string, &handle_alternate_url/2},
-      {"favicon", :string, :ignore},
+      {"favicon", :string, &handle_image/2},
       {"feed_url", :string, &handle_self_url/2},
       {"generator", :string, :ignore},
       {"guid", :map, &handle_id/2},
@@ -279,7 +279,7 @@ defmodule Reed.Basic.Transformer do
       {"home_page_url", :string, &handle_alternate_url/2},
       {"href", :string, :ignore},
       {"hubs", :string, :ignore},
-      {"icon", :string, :ignore},
+      {"icon", :string, &handle_image/2},
       {"id", :string, &handle_id/2},
       {"image", :map, &handle_image/2},
       {"itunes:applepodcastsverify", :string, :ignore},
@@ -306,7 +306,7 @@ defmodule Reed.Basic.Transformer do
       {"lastBuildDate", :string, &handle_updated/2},
       {"length", :string, :ignore},
       {"link", :list, &handle_links/2},
-      {"logo", :string, :ignore},
+      {"logo", :string, &handle_image/2},
       {"managingEditor", :string, :ignore},
       {"media:content", :map, &handle_media_content/2},
       {"media:group", :map, &handle_media_group/2},
@@ -560,7 +560,7 @@ defmodule Reed.Basic.Transformer do
   end
 
   defp handle_image(_name, %{"url" => _} = value) do
-    # rss %{"image" => %{"url" => _, "title" => _, "link" => _}}
+    # rss %{"image" => %{"url" => _, "link" => _, "title" => _, "description" => _, "height" => _, "width" => _}}
     {:merge, %{"image" => value}}
   end
 
@@ -570,6 +570,10 @@ defmodule Reed.Basic.Transformer do
   end
 
   defp handle_image(_name, value) when is_binary(value) do
+    # json %{"favicon" => _} 64 x 64 pixels
+    # json %{"icon" => _} 512 x 512 pixels
+    # atom %{"icon" => _} 1:1 aspect ratio
+    # atom %{"logo" => _} 2:1 aspect ratio
     {:merge, %{"image" => value}}
   end
 

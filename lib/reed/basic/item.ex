@@ -20,7 +20,7 @@ defmodule Reed.Basic.Item do
             data: %{}
 
   @type t :: %__MODULE__{
-          authors: nil,
+          authors: nil | String.t(),
           content: nil | String.t(),
           content_base: nil | String.t(),
           duration: nil | integer(),

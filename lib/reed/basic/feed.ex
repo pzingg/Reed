@@ -1,6 +1,8 @@
 defmodule Reed.Basic.Feed do
   require Logger
 
+  alias Reed.Basic.{Attachment, Item, Link}
+
   @derive Jason.Encoder
   defstruct authors: nil,
             id: nil,
@@ -24,9 +26,9 @@ defmodule Reed.Basic.Feed do
           title: nil | String.t(),
           updated: nil | String.t(),
           categories: [String.t()],
-          image: nil | Rss.Basic.Attachment.t(),
-          links: [Reed.Basic.Link.t()],
-          items: [Reed.Basic.Item.t()],
+          image: nil | Attachment.t(),
+          links: [Link.t()],
+          items: [Item.t()],
           data: map()
         }
 
@@ -53,10 +55,10 @@ defmodule Reed.Basic.Feed do
     {image, data} = Map.pop(data, "image")
     {links, data} = Map.pop(data, "links", [])
     {items, data} = Map.pop(data, "items", [])
-    image = Reed.Basic.Attachment.to_attachment(image)
-    links = Enum.map(links, &Reed.Basic.Link.to_link/1)
-    items = Enum.map(items, &Reed.Basic.Item.to_item/1)
-    feed_url = Reed.Basic.Link.url(links, "self")
+    image = Attachment.to_attachment(image)
+    links = Enum.map(links, &Link.to_link/1)
+    items = Enum.map(items, &Item.to_item/1)
+    feed_url = Link.url(links, "self")
     id = Map.get(data, "id")
 
     data =
@@ -76,12 +78,16 @@ defmodule Reed.Basic.Feed do
   end
 
   def self_url(%__MODULE__{links: links}) do
-    Reed.Basic.Link.url(links, "self")
+    Link.url(links, "self")
   end
 
   def site_url(%__MODULE__{links: links}) do
-    Reed.Basic.Link.url(links, "alternate")
+    Link.url(links, "alternate")
   end
+
+  def image_url(%__MODULE__{image: %Attachment{url: url}}), do: url
+
+  def image_url(%__MODULE__{}), do: nil
 
   def host(%__MODULE__{} = feed) do
     feed |> site_url() |> parse_host()
