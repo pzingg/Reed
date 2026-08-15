@@ -17,6 +17,19 @@ defmodule Reed.StreamTest do
       assert length(feed.items) == 2
     end
 
+    test "rss 2.0 feed with source" do
+      # feed_url = "https://rss.chat/users/rss.xml"
+      stream = stream_feed("rss-chat-users-rss.xml")
+      assert {:ok, rss} = Reed.stream(stream, transform: collect() |> limit(2) |> pipeline())
+      assert "rss" == rss.flavor
+      feed = Transformer.to_feed(rss)
+      assert feed.title == "rss.chat: all posts"
+      item = List.first(feed.items)
+      assert item.data["source"]
+      assert item.data["source"]["url"] == "https://rss.chat/users/mistersugar/rss.xml"
+      assert item.data["source"]["_text_"] == "Anton Zuiker"
+    end
+
     test "rss 2.0 feed with metadata after items" do
       stream = stream_feed("disordered-example.xml")
       assert {:ok, rss} = Reed.stream(stream, transform: collect() |> limit(2) |> pipeline())

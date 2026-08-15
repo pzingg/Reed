@@ -252,7 +252,7 @@ defmodule Reed.Basic.Transformer do
       {"banner_image", :string, :ignore},
       {"categories", :list, &handle_categories/2},
       {"category", :list, &handle_categories/2},
-      {"cloud", :map, &handle_rss_cloud/2},
+      {"cloud", :map, &handle_rsscloud/2},
       {"comments", :string, :ignore},
       {"content", :map, &handle_content/2},
       {"content_html", :string, &handle_content/2},
@@ -340,7 +340,7 @@ defmodule Reed.Basic.Transformer do
       {"podcast:txt", :string, :ignore},
       {"podcast:value", :string, :ignore},
       {"post-id", :integer, :ignore},
-      {"pubDate", :string, &handle_updated/2},
+      {"pubDate", :string, &handle_published/2},
       {"published", :string, &handle_published/2},
       {"rating", :string, :ignore},
       {"rights", :string, :ignore},
@@ -350,7 +350,7 @@ defmodule Reed.Basic.Transformer do
       {"skipDays", :string, :ignore},
       {"skipHours", :string, :ignore},
       {"slash:comments", :integer, :ignore},
-      {"source", :string, :ignore},
+      {"source", :map, :ignore},
       {"source:account", :map, :ignore},
       {"source:blogroll", :string, :ignore},
       {"source:localTime", :string, :ignore},
@@ -518,8 +518,8 @@ defmodule Reed.Basic.Transformer do
   end
 
   defp parse_duration(value) do
-    case Regex.run(~r/(\d\d?):(\d\d):(\d\d)/, value) do
-      [_, hours, mins, secs] ->
+    case Regex.named_captures(~r/(?<hours>\d\d?):(?<minutes>\d\d):(?<seconds>\d\d)/, value) do
+      %{"hours" => hours, "minutes" => mins, "seconds" => secs} ->
         hours = String.to_integer(hours)
         mins = String.to_integer(mins)
         secs = String.to_integer(secs)
@@ -598,7 +598,7 @@ defmodule Reed.Basic.Transformer do
     {:append, "links", links}
   end
 
-  defp handle_rss_cloud(_name, %{"domain" => host, "port" => port, "path" => path}) do
+  defp handle_rsscloud(_name, %{"domain" => host, "port" => port, "path" => path}) do
     # rss %{"cloud" => %{"domain" => _, "port" => _, "path" => _, "registerProcedure" => "", "protocol" => "http-post"}}
     port = String.to_integer(port)
     url = %URI{scheme: "http", host: host, port: port, path: path} |> URI.to_string()
