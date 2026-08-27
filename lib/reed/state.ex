@@ -41,6 +41,8 @@ defmodule Reed.State do
             private: %{},
             current_text: "",
             current_path: [],
+            xhtml_path: nil,
+            xhtml: "",
             transform: nil,
             normalize_rss: false,
             chunks: nil,

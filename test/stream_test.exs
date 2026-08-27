@@ -54,6 +54,24 @@ defmodule Reed.StreamTest do
                "https://daringfireball.net/linked/2026/06/07/alberto-romero-on-apples-ai-spending"
     end
 
+    test "atom feed with xhtml content" do
+      # feed_url = "https://tbray.org/ongoing/ongoing.xml"
+      stream = stream_feed("tbray-org-ongoing-ongoing.xml")
+      assert {:ok, rss} = Reed.stream(stream, transform: collect() |> limit(2) |> pipeline())
+      assert "atom" == rss.flavor
+      feed = Transformer.to_feed(rss)
+      assert feed.title == "ongoing by Tim Bray"
+      [item | _rest] = feed.items
+
+      expected =
+        """
+        <div xmlns="http://www.w3.org/1999/xhtml">There’s been a lot of discussion recently
+        """
+        |> String.trim()
+
+      assert String.starts_with?(item.summary, expected)
+    end
+
     test "json feed" do
       # feed_url = "https://daringfireball.net/feeds/json"
       stream = stream_feed("daringfireball-net-feeds.json")

@@ -2,28 +2,40 @@ defmodule Reed.Handler do
   @moduledoc false
   @behaviour Saxy.Handler
 
+  require Logger
+
+  @client_keys [:feed_info, :current_item, :halted, :private, :flavor]
+
   # Handle both RSS 2.0 and Atom vocabularies
   @feed_names ["rss", "feed", "channel"]
   @item_names ["item", "entry"]
-
-  @client_keys [:feed_info, :current_item, :halted, :private, :flavor]
 
   def client_state(state), do: Map.take(state, @client_keys)
 
   @impl Saxy.Handler
   def handle_event(:start_document, _prolog, state), do: {:ok, state}
 
-  @impl Saxy.Handler
   def handle_event(:end_document, _data, state) do
     {:ok, state}
   end
 
-  @impl Saxy.Handler
   def handle_event(:start_element, {name, attributes}, state) do
     current_path = [name | state.current_path]
 
     new_state =
       cond do
+        is_list(state.xhtml_path) ->
+          attr_string =
+            attributes
+            |> Enum.map(fn {k, v} -> " #{k}=\"#{escape_attr(v)}\"" end)
+            |> Enum.join("")
+
+          %{
+            state
+            | current_path: current_path,
+              current_text: state.current_text <> "<#{name}#{attr_string}>"
+          }
+
         name in @item_names ->
           %{state | current_item: %{}, current_path: current_path}
 
@@ -73,13 +85,34 @@ defmodule Reed.Handler do
           }
       end
 
+    start_xhtml? = Enum.any?(attributes, fn attr -> attr == {"type", "xhtml"} end)
+
+    new_state =
+      if start_xhtml? do
+        %{new_state | xhtml_path: new_state.current_path}
+      else
+        new_state
+      end
+
     {:ok, new_state}
   end
 
-  @impl Saxy.Handler
   def handle_event(:end_element, name, state) do
     new_state =
       cond do
+        is_list(state.xhtml_path) ->
+          state = %{
+            state
+            | current_text: state.current_text <> "</#{name}>",
+              current_path: get_parent_path(state.current_path)
+          }
+
+          if state.xhtml_path == state.current_path do
+            %{state | xhtml_path: nil}
+          else
+            state
+          end
+
         not is_nil(state.current_item) and name in @item_names ->
           state
           |> maybe_deflate_feed()
@@ -99,7 +132,6 @@ defmodule Reed.Handler do
         true ->
           local_path = feed_path(state.current_path)
           value = value_at(state.feed_private, local_path, state.current_text)
-
           # Reset `feed_info` so that next time it is needed it will be re-created by
           # deflating `feed_private` (before `process_transforms/1`, or after the
           # entire parse is complete).
@@ -115,9 +147,18 @@ defmodule Reed.Handler do
     if state.halted, do: {:stop, new_state}, else: {:ok, new_state}
   end
 
-  @impl Saxy.Handler
   def handle_event(:characters, chars, state) do
     {:ok, %{state | current_text: state.current_text <> chars}}
+  end
+
+  defp escape_attr(value) when is_binary(value) do
+    Regex.replace(~r/[&<>"']/, value, fn
+      "&", _ -> "&amp;"
+      "<", _ -> "&lt;"
+      ">", _ -> "&gt;"
+      "\"", _ -> "&quot;"
+      "'", _ -> "&#39;"
+    end)
   end
 
   def get_item_handler!(options) when is_map(options) do
@@ -282,8 +323,13 @@ defmodule Reed.Handler do
         Map.put(value, "_text_", text)
 
       {value, text} ->
-        raise "#{inspect(path)} has non-map value #{inspect(value)} and text #{text}"
+        raise "#{inspect_path(path)} has non-map value #{inspect(value)} and text #{text}"
     end
+  end
+
+  defp inspect_path(path) do
+    path = Enum.reverse(path) |> Enum.join(",")
+    "[#{path}]"
   end
 
   # The path functions below create 0-indexed paths. Since multiple child elements with

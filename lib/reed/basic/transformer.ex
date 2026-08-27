@@ -63,11 +63,12 @@ defmodule Reed.Basic.Transformer do
     item
     |> Map.put("_reed_normalized_", true)
     |> Enum.reduce(%{}, fn {name, value}, acc ->
-      handler =
+      name =
         name
         |> String.replace_prefix("atom:", "")
         |> String.replace_prefix("atom10:", "")
-        |> :lists.keyfind(1, handlers)
+
+      handler = :lists.keyfind(name, 1, handlers)
 
       result =
         case handler do
@@ -82,9 +83,14 @@ defmodule Reed.Basic.Transformer do
           {_name, _type, :ignore} ->
             ignore(name, value)
 
-          {_name, :string, fun} ->
-            text = get_text(value)
-            fun.(name, text)
+          {name, :string, fun} ->
+            case get_text(value) do
+              text when is_binary(text) ->
+                fun.(name, text)
+
+              _ ->
+                :delete
+            end
 
           {_name, _, fun} ->
             fun.(name, value)
@@ -260,8 +266,8 @@ defmodule Reed.Basic.Transformer do
       {"content:encoded", :string, &handle_content/2},
       {"contributor", :string, :ignore},
       {"copyright", :string, :ignore},
-      {"date_modified", :string, :ignore},
-      {"date_published", :string, &handle_updated/2},
+      {"date_modified", :string, &handle_updated/2},
+      {"date_published", :string, &handle_published/2},
       {"dc:creator", :string, &handle_authors/2},
       {"description", :string, &handle_summary/2},
       {"docs", :string, :ignore},
@@ -303,7 +309,7 @@ defmodule Reed.Basic.Transformer do
       {"itunes:transcript", :string, :ignore},
       {"itunes:type", :string, :ignore},
       {"language", :string, &handle_language/2},
-      {"lastBuildDate", :string, &handle_updated/2},
+      {"lastBuildDate", :string, &handle_published/2},
       {"length", :string, :ignore},
       {"link", :list, &handle_links/2},
       {"logo", :string, &handle_image/2},
@@ -685,7 +691,18 @@ defmodule Reed.Basic.Transformer do
   end
 
   defp handle_published(_name, value) when is_binary(value) do
+    # Note: rss channel "pubDate" is ignored.
+    # rss channel %{"lastBuildDate" => rfc822_formatted_date}
+    # rss item %{"pubDate" => rfc822_formatted_date}
+    # atom entry %{"published" => rfc3339_formatted_date}
+    # json item %{"date_published" => rfc3339_formatted_date}
     {:merge, %{"published" => value}}
+  end
+
+  defp handle_updated(_name, value) when is_binary(value) do
+    # atom entry %{"updated" => rfc3339_formatted_date}
+    # json item %{"date_modified" => rfc3339_formatted_date}
+    {:merge, %{"updated" => value}}
   end
 
   defp handle_subtitle(_name, value) when is_binary(value) do
@@ -698,10 +715,6 @@ defmodule Reed.Basic.Transformer do
 
   defp handle_title(_name, value) when is_binary(value) do
     {:merge, %{"title" => value}}
-  end
-
-  defp handle_updated(_name, value) when is_binary(value) do
-    {:merge, %{"updated" => value}}
   end
 
   defp get_text(text) when is_binary(text), do: text
