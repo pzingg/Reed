@@ -52,14 +52,16 @@ defmodule Reed.Basic.Feed do
         "items"
       ])
 
-    {image, data} = Map.pop(data, "image")
     {links, data} = Map.pop(data, "links", [])
-    {items, data} = Map.pop(data, "items", [])
-    image = Attachment.to_attachment(image)
     links = Enum.map(links, &Link.to_link/1)
-    items = Enum.map(items, &Item.to_item/1)
     feed_url = Link.url(links, "self")
+
+    {image, data} = Map.pop(data, "image")
+    image = Attachment.to_attachment(image, feed_url)
     id = Map.get(data, "id")
+
+    {items, data} = Map.pop(data, "items", [])
+    items = Enum.map(items, &Item.to_item/1)
 
     data =
       if is_nil(id) && !is_nil(feed_url) do

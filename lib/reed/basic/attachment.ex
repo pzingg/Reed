@@ -16,44 +16,54 @@ defmodule Reed.Basic.Attachment do
           data: map()
         }
 
-  def to_attachment(url) when is_binary(url) do
-    struct(__MODULE__, maybe_add_mime_type(url))
+  def to_attachment(data, base_url \\ nil)
+
+  def to_attachment(url, base_url) when is_binary(url) do
+    %__MODULE__{url: url} |> with_absolute_url_and_mime_type(base_url)
   end
 
-  def to_attachment(data) when is_map(data) do
+  def to_attachment(data, base_url) when is_map(data) do
     {data, other_data} =
       Map.split(data, ["url", "size", "height", "width", "type", "title", "link", "primary"])
 
     data =
       data
       |> AtomicMap.convert(safe: true)
-      |> maybe_add_mime_type()
       |> Map.put(:data, other_data)
 
-    struct(__MODULE__, data)
+    struct(__MODULE__, data) |> with_absolute_url_and_mime_type(base_url)
   end
 
-  def to_attachment(_), do: nil
+  def to_attachment(_, _), do: nil
 
-  defp maybe_add_mime_type(%{url: _url, type: _type} = attachment), do: attachment
-
-  defp maybe_add_mime_type(%{url: url} = attachment) do
-    case maybe_add_mime_type(url) do
-      %{type: type} -> Map.put(attachment, :type, type)
-      _ -> attachment
-    end
+  defp with_absolute_url_and_mime_type(%__MODULE__{url: url, type: type} = attachment, base_url)
+       when is_binary(type) do
+    %{attachment | url: absolute_url(url, base_url)}
   end
 
-  defp maybe_add_mime_type(url) when is_binary(url) do
+  defp with_absolute_url_and_mime_type(%__MODULE__{url: url} = attachment, base_url) do
     type = url |> url_path() |> MIME.from_path()
+    url = absolute_url(url, base_url)
 
     if type != "application/octet-stream" do
-      %{url: url, type: type}
+      %{attachment | url: url, type: type}
     else
       Logger.debug("no mime type for #{url}")
-      %{url: url}
+      %{attachment | url: url}
     end
   end
+
+  defp absolute_url(url, base_url) when is_binary(url) and is_binary(base_url) do
+    uri = URI.parse(url)
+
+    if uri.scheme do
+      url
+    else
+      URI.merge(base_url, uri) |> URI.to_string()
+    end
+  end
+
+  defp absolute_url(url, _), do: url
 
   defp url_path(url) do
     uri = URI.parse(url)
