@@ -1,5 +1,12 @@
 defmodule Reed.Basic.Transformer do
   @moduledoc """
+  The Atom spec includes many variants for the <atom:content>
+  element. We only handle the text, html, or xhtml content in the
+  atomInlineTextContent, atomInlineXHTMLContent, atomInlineOtherContent
+  variants, and we ignore the media type.
+
+  See https://www.rfc-editor.org/info/rfc4287
+
   Handled internally by Reed.Handler:
     entries
     items
@@ -83,7 +90,7 @@ defmodule Reed.Basic.Transformer do
           {_name, _type, :ignore} ->
             ignore(name, value)
 
-          {name, :string, fun} ->
+          {name, type, fun} when type in [:string, :xhtml] ->
             case get_text(value) do
               text when is_binary(text) ->
                 fun.(name, text)
@@ -260,7 +267,7 @@ defmodule Reed.Basic.Transformer do
       {"category", :list, &handle_categories/2},
       {"cloud", :map, &handle_rsscloud/2},
       {"comments", :string, :ignore},
-      {"content", :map, &handle_content/2},
+      {"content", :xhtml, &handle_content/2},
       {"content_html", :string, &handle_content/2},
       {"content_text", :string, &handle_content/2},
       {"content:encoded", :string, &handle_content/2},
@@ -369,7 +376,7 @@ defmodule Reed.Basic.Transformer do
       {"sy:updatePeriod", :string, :ignore},
       {"tags", :list, &handle_categories/2},
       {"textInput", :string, :ignore},
-      {"title", :string, &handle_title/2},
+      {"title", :xhtml, &handle_title/2},
       {"ttl", :string, :ignore},
       {"type", :string, :ignore},
       {"updated", :string, &handle_updated/2},
@@ -719,9 +726,15 @@ defmodule Reed.Basic.Transformer do
 
   defp get_text(text) when is_binary(text), do: text
   defp get_text([text]) when is_binary(text), do: text
-  defp get_text(%{"_text_" => text}), do: text
-  defp get_text([%{"_text_" => text}]), do: text
+  defp get_text(%{"_text_" => _} = value), do: strip_namespace_prefixes(value)
+  defp get_text([%{"_text_" => _} = value]), do: strip_namespace_prefixes(value)
   defp get_text(_), do: nil
+
+  defp strip_namespace_prefixes(%{"type" => "xhtml", "_text_" => xhtml}) do
+    String.replace(xhtml, ~r/(<\/?)([a-zA-Z_][\w.-]*):([a-zA-Z_][\w.-]*)/, "\\1\\3")
+  end
+
+  defp strip_namespace_prefixes(%{"_text_" => text}), do: text
 
   defp reject_nils(value) when is_map(value) do
     value

@@ -20,6 +20,11 @@ defmodule Reed.Handler do
   end
 
   def handle_event(:start_element, {name, attributes}, state) do
+    # Because the original Reed parser has no way to accumulate
+    # XHTML elements, which can have multiple text segments interspersed
+    # with sub-elements, when we encounter a `type="xhtml"` attribute,
+    # we just grab all the XHTML and stuff it into a single text value.
+
     current_path = [name | state.current_path]
 
     new_state =

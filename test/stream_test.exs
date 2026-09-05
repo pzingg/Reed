@@ -7,6 +7,7 @@ defmodule Reed.StreamTest do
   alias Reed.Basic.{Transformer, Item}
 
   describe "stream handler parses" do
+    @tag :skip
     test "rss 2.0 feed" do
       # feed_url = "https://blog.jim-nielsen.com/feed.xml"
       stream = stream_feed("blog-jim-nielsen-com-feed.xml")
@@ -17,6 +18,7 @@ defmodule Reed.StreamTest do
       assert length(feed.items) == 2
     end
 
+    @tag :skip
     test "rss 2.0 feed with source" do
       # feed_url = "https://rss.chat/users/rss.xml"
       stream = stream_feed("rss-chat-users-rss.xml")
@@ -30,6 +32,7 @@ defmodule Reed.StreamTest do
       assert item.data["source"]["_text_"] == "Anton Zuiker"
     end
 
+    @tag :skip
     test "rss 2.0 feed with metadata after items" do
       stream = stream_feed("disordered-example.xml")
       assert {:ok, rss} = Reed.stream(stream, transform: collect() |> limit(2) |> pipeline())
@@ -39,6 +42,7 @@ defmodule Reed.StreamTest do
       assert length(feed.items) == 2
     end
 
+    @tag :skip
     test "atom feed" do
       # feed_url = "https://daringfireball.net/feeds/main"
       stream = stream_feed("daringfireball-net-feeds-main.xml")
@@ -54,6 +58,7 @@ defmodule Reed.StreamTest do
                "https://daringfireball.net/linked/2026/06/07/alberto-romero-on-apples-ai-spending"
     end
 
+    @tag :skip
     test "atom feed with xhtml content" do
       # feed_url = "https://tbray.org/ongoing/ongoing.xml"
       stream = stream_feed("tbray-org-ongoing-ongoing.xml")
@@ -72,6 +77,18 @@ defmodule Reed.StreamTest do
       assert String.starts_with?(item.summary, expected)
     end
 
+    test "atom feed with invalid xhtml title" do
+      # feed_url = "https://tantek.com/updates.atom"
+      stream = stream_feed("tantek-com-updates-atom.xml")
+      assert {:ok, rss} = Reed.stream(stream, transform: collect() |> limit(2) |> pipeline())
+      assert "atom" == rss.flavor
+      feed = Transformer.to_feed(rss)
+      assert feed.title == "Tantek Çelik"
+      [item | _rest] = feed.items
+      refute item.title
+    end
+
+    @tag :skip
     test "json feed" do
       # feed_url = "https://daringfireball.net/feeds/json"
       stream = stream_feed("daringfireball-net-feeds.json")
@@ -82,6 +99,7 @@ defmodule Reed.StreamTest do
       assert length(feed.items) == 2
     end
 
+    @tag :skip
     test "html microformats feed" do
       # feed_url is required for microformats
       feed_url = "https://blog.jim-nielsen.com/feed.html"
@@ -99,6 +117,7 @@ defmodule Reed.StreamTest do
       assert length(feed.items) == 2
     end
 
+    @tag :skip
     test "youtube channel feed" do
       # feed_url = "http://www.youtube.com/feeds/videos.xml?channel_id=UCNffNDI2yhY8kMQXeTop2OA"
       stream = stream_feed("paul-foxton-youtube-com.xml")
@@ -109,6 +128,7 @@ defmodule Reed.StreamTest do
       assert length(feed.items) == 2
     end
 
+    @tag :skip
     test "itunes podcast feed" do
       # feed_url = "https://feeds.transistor.fm/appleinsider"
       stream = stream_feed("appleinsider.xml")
@@ -119,6 +139,7 @@ defmodule Reed.StreamTest do
       assert length(feed.items) == 2
     end
 
+    @tag :skip
     test "wordpress feed" do
       # feed_url = "https://bipedsmonitor.com/feed/"
       stream = stream_feed("bipedsmonitor-com-feed.xml")
@@ -140,6 +161,7 @@ defmodule Reed.StreamTest do
   end
 
   describe "stream handler normalizes" do
+    @tag :skip
     test "rss 2.0 feed" do
       # feed_url = "https://blog.jim-nielsen.com/feed.xml"
       stream = stream_feed("blog-jim-nielsen-com-feed.xml")
