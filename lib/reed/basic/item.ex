@@ -13,6 +13,7 @@ defmodule Reed.Basic.Item do
             title: nil,
             published: nil,
             updated: nil,
+            hash: "",
             permalink: "undefined",
             categories: [],
             links: [],
@@ -33,6 +34,7 @@ defmodule Reed.Basic.Item do
           title: nil | String.t(),
           published: nil | String.t(),
           updated: nil | String.t(),
+          hash: String.t(),
           permalink: String.t(),
           categories: [String.t()],
           links: [Reed.Basic.Link.t()],
@@ -41,10 +43,12 @@ defmodule Reed.Basic.Item do
         }
 
   def to_item(data) when is_map(data) do
+    data = Map.delete(data, "_reed_normalized_")
+    contents = :erlang.term_to_binary(data)
+    hash = :crypto.hash(:md5, contents) |> Base.encode16(case: :lower)
+
     {data, other_data} =
-      data
-      |> Map.delete("_reed_normalized_")
-      |> Map.split([
+      Map.split(data, [
         "authors",
         "content",
         "content_base",
@@ -72,7 +76,7 @@ defmodule Reed.Basic.Item do
     data =
       data
       |> AtomicMap.convert(safe: true)
-      |> Map.merge(%{links: links, attachments: attachments, data: other_data})
+      |> Map.merge(%{hash: hash, links: links, attachments: attachments, data: other_data})
 
     struct(__MODULE__, data)
   end
