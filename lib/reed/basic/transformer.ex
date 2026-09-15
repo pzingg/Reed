@@ -90,7 +90,7 @@ defmodule Reed.Basic.Transformer do
           {_name, _type, :ignore} ->
             ignore(name, value)
 
-          {name, type, fun} when type in [:string, :xhtml] ->
+          {name, :string, fun} ->
             case get_text(value) do
               text when is_binary(text) ->
                 fun.(name, text)
@@ -267,7 +267,7 @@ defmodule Reed.Basic.Transformer do
       {"category", :list, &handle_categories/2},
       {"cloud", :map, &handle_rsscloud/2},
       {"comments", :string, :ignore},
-      {"content", :xhtml, &handle_content/2},
+      {"content", :map, &handle_content/2},
       {"content_html", :string, &handle_content/2},
       {"content_text", :string, &handle_content/2},
       {"content:encoded", :string, &handle_content/2},
@@ -312,7 +312,7 @@ defmodule Reed.Basic.Transformer do
       {"itunes:season", :string, :ignore},
       {"itunes:summary", :string, &handle_summary/2},
       {"itunes:subtitle", :string, &handle_subtitle/2},
-      {"itunes:title", :string, &handle_title/2},
+      {"itunes:title", :map, &handle_title/2},
       {"itunes:transcript", :string, :ignore},
       {"itunes:type", :string, :ignore},
       {"language", :string, &handle_language/2},
@@ -376,7 +376,7 @@ defmodule Reed.Basic.Transformer do
       {"sy:updatePeriod", :string, :ignore},
       {"tags", :list, &handle_categories/2},
       {"textInput", :string, :ignore},
-      {"title", :xhtml, &handle_title/2},
+      {"title", :map, &handle_title/2},
       {"ttl", :string, :ignore},
       {"type", :string, :ignore},
       {"updated", :string, &handle_updated/2},
@@ -386,6 +386,8 @@ defmodule Reed.Basic.Transformer do
       {"webMaster", :string, :ignore},
       {"width", :integer, :ignore},
       {"wfw:commentRss", :string, :ignore},
+      {"xml:base", :string, :ignore},
+      {"xml:lang", :string, :ignore},
       {"yt:channelId", :string, :ignore},
       {"yt:videoId", :string, :ignore}
     ]
@@ -499,21 +501,20 @@ defmodule Reed.Basic.Transformer do
     end
   end
 
-  # TODO
-  defp handle_content(_name, %{"xml:base" => base_url} = value) do
-    # atom (feed) %{"content" => %{"type" => "html", "xml:base" => _, "xml:lang" => "en", "_text_" => _}}
-    {:merge, %{"content" => get_text(value), "content_base" => base_url}}
-  end
-
   defp handle_content(_name, value) when is_map(value) do
     # atom (feed) %{"content" => %{"type" => "html", "xml:base" => _, "xml:lang" => "en", "_text_" => _}}
-    {:merge, %{"content" => get_text(value)}}
+    {:merge,
+     %{
+       "content" => get_text(value),
+       "content_base" => Map.get(value, "xml:base"),
+       "content_lang" => Map.get(value, "xml:lang")
+     }}
   end
 
   defp handle_content(_name, value) when is_binary(value) do
     # json %{"content:encoded" => _}}
     # json %{"content_html" => _}
-    {:merge, %{"content" => value}}
+    {:merge, %{"content" => value, "content_base" => nil, "content_lang" => nil}}
   end
 
   defp handle_content(name, value) do
@@ -720,8 +721,10 @@ defmodule Reed.Basic.Transformer do
     {:merge, %{"summary" => value}}
   end
 
-  defp handle_title(_name, value) when is_binary(value) do
-    {:merge, %{"title" => value}}
+  defp handle_title(_name, value) do
+    # atom %{"title" => %{"type" => "html", "_text_" => title}}
+    # rss %{"title" => title}
+    {:merge, %{"title" => get_text(value)}}
   end
 
   defp get_text(text) when is_binary(text), do: text
