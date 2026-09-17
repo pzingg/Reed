@@ -1,30 +1,93 @@
 defmodule Reed.Basic.Transformer do
   @moduledoc """
+  These are handled internally by Reed.Handler:
+  - entries
+  - items
+
+  Links are handled specially:
+  - link (as a URL) is transformed to a rel="alternate", type="html" link
+  - link/alternate
+  - link/enclosure
+  - link/related
+  - link/self
+
+  In JSON feeds:
+  - feed_url is transformed to a rel="self" link
+  - home_page_url is transformed to a rel="alternate" link
+  - url is transformed to a rel="related" link
+  - external_url is transformed to a rel="alternate" link
+
+  ## References for some of the RSS namespaces encountered
+
+  | Prefix           | Reference docs |
+  | ---------------- | -------------- |
+  | rss:             | https://www.rssboard.org/rss-specification |
+  | atom:            | https://feedsmith.dev/reference/namespaces/atom |
+  | content:         | https://feedsmith.dev/reference/namespaces/content |
+  | acast:           | https://feedsmith.dev/reference/namespaces/acast |
+  | blogChannel:     | https://feedsmith.dev/reference/namespaces/blogchannel |
+  | castfire:        | |
+  | creativeCommons: | https://feedsmith.dev/reference/namespaces/creativecommons |
+  | dc:              | https://feedsmith.dev/reference/namespaces/dc |
+  | dcterms:         | https://feedsmith.dev/reference/namespaces/dcterms |
+  | feedburner:      | |
+  | feedpress:       | https://feedsmith.dev/reference/namespaces/feedpress |
+  | fireside:        | |
+  | flatplan:        | |
+  | foaf/friends:    | https://xmlns.com/foaf/spec/ |
+  | georss:          | https://feedsmith.dev/reference/namespaces/georss |
+  | googleplay:      | https://feedsmith.dev/reference/namespaces/googleplay |
+  | housekeeping:    | |
+  | itunes:          | https://feedsmith.dev/reference/namespaces/itunes |
+  | lab:             | |
+  | lj:              | |
+  | openSearch:      | https://feedsmith.dev/reference/namespaces/opensearch |
+  | media:           | https://feedsmith.dev/reference/namespaces/media |
+  | meta:            | |
+  | omny:            | |
+  | podcast:         | https://feedsmith.dev/reference/namespaces/podcast |
+  | ppg:             | |
+  | psc:             | https://podlove.org/simple-chapters/ |
+  | rawvoice:        | https://feedsmith.dev/reference/namespaces/rawvoice |
+  | slash:           | https://feedsmith.dev/reference/namespaces/slash |
+  | slate:           | |
+  | snf:             | https://publishers.smartnews.com/hc/ja/articles/360036526213-SmartFormat%E6%A6%82%E8%A6%81-%E3%83%90%E3%83%BC%E3%82%B8%E3%83%A7%E3%83%B32-1 |
+  | source:          | https://feedsmith.dev/reference/namespaces/source |
+  | spotify:         | https://feedsmith.dev/reference/namespaces/spotify |
+  | ssp:             | https://wordpress.org/plugins/seriously-simple-podcasting/ |
+  | sy:              | https://web.resource.org/rss/1.0/modules/syndication/ |
+  | thr:             | https://feedsmith.dev/reference/namespaces/thr |
+  | truthout:        | |
+  | webfeeds:        | https://webfeeds.org/rss/1.0 |
+  | wfw:             | https://feedsmith.dev/reference/namespaces/wfw |
+  | yt:              | https://feedsmith.dev/reference/namespaces/yt |
+
+  ## Other elements without explicit namespaces
+
+  - author_name
+  - author_url
+  - characters
+  - html
+  - imageCaption
+  - location
+  - meta
+  - provider_name
+  - provider_url
+  - thumbnail
+  - thumbnail_height
+  - thumbnail_url
+  - thumbnail_width
+  - timeToRead
+  - webmaster
+
+  ## Other notes
+
   The Atom spec includes many variants for the <atom:content>
   element. We only handle the text, html, or xhtml content in the
   atomInlineTextContent, atomInlineXHTMLContent, atomInlineOtherContent
   variants, and we ignore the media type.
 
   See https://www.rfc-editor.org/info/rfc4287
-
-  Handled internally by Reed.Handler:
-    entries
-    items
-
-  Links are handled specially:
-    link
-    link/alternate
-    link/enclosure
-    link/related
-    link/self
-
-  JSON feeds:
-    feed_url -> rel="self"
-    home_page_url -> rel="alternate"
-
-  JSON feed items:
-    url -> rel="related"
-    external_url -> rel="alternate"
   """
 
   require Logger
@@ -149,112 +212,6 @@ defmodule Reed.Basic.Transformer do
     %{rss | feed_info: feed_info}
   end
 
-  # TODO
-  # acast:episodeId
-  # acast:episodeUrl
-  # acast:network
-  # acast:settings
-  # acast:showId
-  # acast:showUrl
-  # acast:signature
-  # author_name
-  # author_url
-  # blogChannel:blink
-  # blogChannel:blogRoll
-  # castfire:channelName
-  # castfire:playlistCustomField
-  # characters
-  # creativeCommons:license
-  # custom:subtitle
-  # dc:contributor
-  # dc:date
-  # dc:format
-  # dc:language
-  # dc:modified
-  # dc:publisher
-  # dc:rights
-  # dc:subject
-  # dcterms:created
-  # dcterms:modified
-  # default1:object-type
-  # feedburner:origLink
-  # feedpress:locale
-  # feedpress:newsletterId
-  # fireside:genDate
-  # fireside:hostname
-  # fireside:playerEmbedCode
-  # fireside:playerURL
-  # flatplan:parameters
-  # friends:post-format
-  # georss:where
-  # googleplay:author
-  # googleplay:block
-  # googleplay:description
-  # googleplay:email
-  # googleplay:explicit
-  # googleplay:image
-  # googleplay:owner
-  # housekeeping:assert
-  # housekeeping:pointless
-  # housekeeping:robots
-  # housekeeping:validation
-  # html
-  # imageCaption
-  # lab:kicker
-  # lj:journal
-  # lj:journaltype
-  # lj:reply-count
-  # lj:security
-  # location
-  # media:caption
-  # media:category
-  # media:copyright
-  # media:credit
-  # media:description
-  # media:keywords
-  # media:rating
-  # media:restriction
-  # media:text
-  # media:title
-  # meta
-  # omny:clipId
-  # omny:networkId
-  # omny:organizationId
-  # omny:playlistId
-  # omny:programId
-  # ppg:canonical
-  # ppg:enclosureLegacy
-  # ppg:enclosureSecure
-  # ppg:network
-  # ppg:seriesDetails
-  # ppg:systemRef
-  # provider_name
-  # provider_url
-  # psc:chapters
-  # rawvoice:subscribe
-  # slate:id
-  # snf:analytics
-  # snf:darkModeLogo
-  # snf:logo
-  # source:cloud
-  # source:inReplyTo
-  # spotify:countryOfOrigin
-  # ssp:image
-  # standfirst
-  # thr:total
-  # thumbnail
-  # thumbnail_height
-  # thumbnail_url
-  # thumbnail_width
-  # timeToRead
-  # truthout:authors
-  # truthout:fullTitle
-  # truthout:source
-  # webfeeds:icon
-  # webmaster
-  # xhtml:meta
-  # xml:base
-  # xml:lang
   defp element_handlers do
     [
       {"_reed_normalized_", :boolean, :ignore},
@@ -276,6 +233,9 @@ defmodule Reed.Basic.Transformer do
       {"date_modified", :string, &handle_updated/2},
       {"date_published", :string, &handle_published/2},
       {"dc:creator", :string, &handle_authors/2},
+      {"dc:date", :string, :ignore},
+      {"dc:language", :string, :ignore},
+      {"dc:rights", :string, :ignore},
       {"description", :string, &handle_summary/2},
       {"docs", :string, :ignore},
       {"duration", :integer, &handle_duration/2},
@@ -287,6 +247,9 @@ defmodule Reed.Basic.Transformer do
       {"favicon", :string, &handle_image/2},
       {"feed_url", :string, &handle_self_url/2},
       {"generator", :string, :ignore},
+      {"googleplay:author", :string, :ignore},
+      {"googleplay:email", :string, :ignore},
+      {"googleplay:owner", :string, :ignore},
       {"guid", :map, &handle_id/2},
       {"height", :integer, :ignore},
       {"home_page_url", :string, &handle_alternate_url/2},
@@ -322,6 +285,8 @@ defmodule Reed.Basic.Transformer do
       {"logo", :string, &handle_image/2},
       {"managingEditor", :string, :ignore},
       {"media:content", :map, &handle_media_content/2},
+      {"media:credit", :string, :ignore},
+      {"media:description", :string, :ignore},
       {"media:group", :map, &handle_media_group/2},
       {"media:thumbnail", :map, &handle_media_thumbnail/2},
       {"mime_type", :string, :ignore},
@@ -366,10 +331,13 @@ defmodule Reed.Basic.Transformer do
       {"source", :map, :ignore},
       {"source:account", :map, :ignore},
       {"source:blogroll", :string, :ignore},
+      {"source:comments", :map, :ignore},
+      {"source:inReplyTo", :map, :ignore},
       {"source:localTime", :string, :ignore},
       {"source:markdown", :string, :ignore},
       {"source:outline", :map, :ignore},
       {"source:self", :string, &handle_self_url/2},
+      {"standfirst", :string, &handle_summary/2},
       {"subtitle", :string, &handle_subtitle/2},
       {"summary", :string, &handle_summary/2},
       {"sy:updateFrequency", :integer, :ignore},
@@ -383,6 +351,7 @@ defmodule Reed.Basic.Transformer do
       {"url", :string, &handle_related_url/2},
       {"user_comment", :string, :ignore},
       {"version", :string, :ignore},
+      {"webfeeds:icon", :string, :ignore},
       {"webMaster", :string, :ignore},
       {"width", :integer, :ignore},
       {"wfw:commentRss", :string, :ignore},
