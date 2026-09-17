@@ -65,7 +65,7 @@ defmodule Reed.Basic.Feed do
 
     data =
       if is_nil(id) && !is_nil(feed_url) do
-        Logger.info("Basic.Feed using self link #{feed_url} for feed id")
+        Logger.debug("Basic.Feed using self link #{feed_url} for feed id")
         Map.put(data, "id", feed_url)
       else
         data
